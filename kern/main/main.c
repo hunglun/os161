@@ -208,6 +208,9 @@ sys_reboot(int code)
 void
 kmain(char *arguments)
 {
+
+        hello();
+	
 	boot();
 
 	menu(arguments);

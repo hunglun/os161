@@ -380,7 +380,7 @@ file      syscall/time_syscalls.c
 #
 # Startup and initialization
 #
-
+file	  main/hello.c
 file      main/main.c
 file      main/menu.c
 

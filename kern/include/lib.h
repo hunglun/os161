@@ -186,7 +186,7 @@ __DEAD void badassert(const char *expr, const char *file,
 void kgets(char *buf, size_t maxbuflen);
 
 void kprintf_bootstrap(void);
-
+void hello(void);
 /*
  * Other miscellaneous stuff
  */
