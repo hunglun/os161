@@ -35,6 +35,42 @@
  * functions.
  */
 
+/* This is only actually available if OPT_SYNCHPROBS is set. */
+int whalemating(int, char **);
+
+/*
+ * 08 Feb 2012 : GWA : Adding drivers for synchronization problems.
+ *
+ * Whalemating.
+ */
+
+void male_start(void);
+void male_end(void);
+void female_start(void);
+void female_end(void);
+void matchmaker_start(void);
+void matchmaker_end(void);
+int whalemating(int, char **);
+
+void male(void *, unsigned long);
+void female(void *, unsigned long);
+void matchmaker(void *, unsigned long);
+void whalemating_init(void);
+void whalemating_cleanup(void);
+ 
+/*
+ * Traffic light.
+ */
+
+void inQuadrant(int);
+void leaveIntersection(void);
+int stoplight(int, char **);
+
+void gostraight(void *, unsigned long);
+void turnleft(void *, unsigned long);
+void turnright(void *, unsigned long);
+void stoplight_init(void);
+void stoplight_cleanup(void);
 
 /*
  * Test code.

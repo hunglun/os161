@@ -1,4 +1,4 @@
 build
 cscope.*
 kern/compile
-*.*~
+*~

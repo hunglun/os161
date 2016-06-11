@@ -194,5 +194,7 @@ void hello(void);
 #define DIVROUNDUP(a,b) (((a)+(b)-1)/(b))
 #define ROUNDUP(a,b)    (DIVROUNDUP(a,b)*b)
 
+void random_yielder(uint32_t);
+void random_spinner(uint32_t);
 
 #endif /* _LIB_H_ */
