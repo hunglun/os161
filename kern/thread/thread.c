@@ -501,6 +501,7 @@ thread_fork(const char *name,
 	if (newthread == NULL) {
 		return ENOMEM;
 	}
+	DEBUG(DB_THREADS, ">> Thread %s is created.\n" , name);
 
 	/* Allocate a stack */
 	newthread->t_stack = kmalloc(STACK_SIZE);
@@ -971,6 +972,7 @@ wchan_create(const char *name)
 	}
 	threadlist_init(&wc->wc_threads);
 	wc->wc_name = name;
+	DEBUG(DB_THREADS, ">> Channel %s is created.\n" , name);
 
 	return wc;
 }
@@ -1004,6 +1006,7 @@ wchan_sleep(struct wchan *wc, struct spinlock *lk)
 
 	/* must not hold other spinlocks */
 	KASSERT(curcpu->c_spinlocks == 1);
+
 
 	thread_switch(S_SLEEP, wc, lk);
 	spinlock_acquire(lk);
