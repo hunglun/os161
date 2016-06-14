@@ -100,6 +100,8 @@ P(struct semaphore *sem)
 
 	/* Use the semaphore spinlock to protect the wchan as well. */
 	spinlock_acquire(&sem->sem_lock);
+
+
         while (sem->sem_count == 0) {
 		/*
 		 *
@@ -113,8 +115,10 @@ P(struct semaphore *sem)
 		 * Exercise: how would you implement strict FIFO
 		 * ordering?
 		 */
-		wchan_sleep(sem->sem_wchan, &sem->sem_lock);
+
+	  wchan_sleep(sem->sem_wchan, &sem->sem_lock);
         }
+
         KASSERT(sem->sem_count > 0);
         sem->sem_count--;
 	spinlock_release(&sem->sem_lock);
@@ -137,6 +141,12 @@ V(struct semaphore *sem)
 ////////////////////////////////////////////////////////////
 //
 // Lock.
+// Mutex is not binary semaphore : thread ownership
+/* On Windows, there are two differences between mutexes and binary semaphores: A mutex can only be released by the thread which has ownership, i.e. the thread which previously called the Wait function, (or which took ownership when creating it). A semaphore can be released by any thread. */
+
+// Mutex is not spinlock : sleeping
+// http://stackoverflow.com/questions/5869825/when-should-one-use-a-spinlock-instead-of-mutex
+/* n theory, when a thread tries to lock a mutex and it does not succeed, because the mutex is already locked, it will go to sleep, immediately allowing another thread to run. It will continue to sleep until being woken up, which will be the case once the mutex is being unlocked by whatever thread was holding the lock before. When a thread tries to lock a spinlock and it does not succeed, it will continuously re-try locking it, until it finally succeeds; thus it will not allow another thread to take its place (however, the operating system will forcefully switch to another thread, once the CPU runtime quantum of the current thread has been exceeded, of course). */
 
 struct lock *
 lock_create(const char *name)
@@ -154,7 +164,17 @@ lock_create(const char *name)
                 return NULL;
         }
 
-        // add stuff here as needed
+	lock->lk_wchan = wchan_create(lock->lk_name);
+	if (lock->lk_wchan == NULL) {
+		kfree(lock->lk_name);
+		kfree(lock);
+		return NULL;
+	}
+
+        // no thread is holding it
+	spinlock_init(&lock->lk_lock);
+
+	lock->lk_thread = NULL;
 
         return lock;
 }
@@ -164,36 +184,64 @@ lock_destroy(struct lock *lock)
 {
         KASSERT(lock != NULL);
 
-        // add stuff here as needed
+	spinlock_cleanup(&lock->lk_lock);
+
+	wchan_destroy(lock->lk_wchan);
 
         kfree(lock->lk_name);
+
         kfree(lock);
 }
 
 void
 lock_acquire(struct lock *lock)
 {
-        // Write this
 
-        (void)lock;  // suppress warning until code gets written
+  KASSERT(lock != NULL);
+  
+  KASSERT(curthread->t_in_interrupt == false);
+
+  spinlock_acquire(&lock->lk_lock);
+
+  
+  while(lock->lk_thread != NULL) {
+    wchan_sleep(lock->lk_wchan, &lock->lk_lock);
+  }
+
+  KASSERT(lock->lk_thread == NULL); 
+
+  lock->lk_thread = curthread;
+
+  spinlock_release(&lock->lk_lock);
 }
 
 void
 lock_release(struct lock *lock)
 {
-        // Write this
 
-        (void)lock;  // suppress warning until code gets written
+  
+  KASSERT(lock != NULL);
+
+  spinlock_acquire(&lock->lk_lock);
+
+  lock->lk_thread = NULL;
+
+  KASSERT(lock->lk_thread == NULL); 
+
+  wchan_wakeone(lock->lk_wchan, &lock->lk_lock);
+
+  spinlock_release(&lock->lk_lock);
+
 }
 
 bool
 lock_do_i_hold(struct lock *lock)
 {
-        // Write this
+  if (!CURCPU_EXISTS()) {
+    return true;
+  }
 
-        (void)lock;  // suppress warning until code gets written
-
-        return true; // dummy until code gets written
+  return (lock->lk_thread == curthread);
 }
 
 ////////////////////////////////////////////////////////////
