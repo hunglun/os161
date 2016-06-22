@@ -203,7 +203,9 @@ lock_acquire(struct lock *lock)
 
   spinlock_acquire(&lock->lk_lock);
 
-  
+  // While is used instead of If, because
+  // we want to check the condition again after
+  // the sleeping thread wakes up.
   while(lock->lk_thread != NULL) {
     wchan_sleep(lock->lk_wchan, &lock->lk_lock);
   }
@@ -265,8 +267,8 @@ cv_create(const char *name)
                 return NULL;
         }
 
-        // add stuff here as needed
-
+	cv->lockCount = 0;
+	
         return cv;
 }
 
@@ -275,32 +277,71 @@ cv_destroy(struct cv *cv)
 {
         KASSERT(cv != NULL);
 
-        // add stuff here as needed
-
         kfree(cv->cv_name);
         kfree(cv);
+
 }
 
 void
 cv_wait(struct cv *cv, struct lock *lock)
 {
-        // Write this
-        (void)cv;    // suppress warning until code gets written
-        (void)lock;  // suppress warning until code gets written
+  
+        KASSERT(cv != NULL);
+	KASSERT(lock != NULL);
+
+        // Release lock
+
+	lock_release(lock);
+
+	spinlock_acquire(&lock->lk_lock);
+
+	cv->locks[cv->lockCount] = lock;
+
+	cv->lockCount++;
+
+	wchan_sleep(lock->lk_wchan, &lock->lk_lock);
+	
+	KASSERT(cv->lockCount > 0 );
+
+	cv->lockCount--;
+
+	spinlock_release(&lock->lk_lock);
+
+	lock_acquire(lock);
 }
+
 
 void
 cv_signal(struct cv *cv, struct lock *lock)
 {
-        // Write this
-	(void)cv;    // suppress warning until code gets written
-	(void)lock;  // suppress warning until code gets written
+	KASSERT(cv != NULL);
+	KASSERT(lock != NULL);
+
+	unsigned int lastLockIndex;
+	spinlock_acquire(&lock->lk_lock);
+	if (cv->lockCount > 0) {
+	  lastLockIndex = cv->lockCount - 1;
+	  wchan_wakeone(cv->locks[lastLockIndex]->lk_wchan,
+			&cv->locks[lastLockIndex]->lk_lock);
+	}
+
+	spinlock_release(&lock->lk_lock);
+
 }
 
 void
 cv_broadcast(struct cv *cv, struct lock *lock)
 {
-	// Write this
-	(void)cv;    // suppress warning until code gets written
-	(void)lock;  // suppress warning until code gets written
+	KASSERT(cv != NULL);
+	KASSERT(lock != NULL);
+
+	spinlock_acquire(&lock->lk_lock);
+	
+	for(int i=0; i< cv->lockCount; i++){
+	  wchan_wakeone(cv->locks[i]->lk_wchan, &cv->locks[i]->lk_lock);
+	}
+
+	spinlock_release(&lock->lk_lock);
+	
+
 }
